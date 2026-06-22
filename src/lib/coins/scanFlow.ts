@@ -18,8 +18,12 @@ export interface ScanResult {
   rarityLabel: RarityLabel | null;
 }
 
-export async function runScan(deps: ScanDeps, frontB64: string, backB64: string): Promise<ScanResult> {
-  const identity = await deps.identify(frontB64, backB64);
+export type PriceDeps = Pick<ScanDeps, "lookup" | "estimate">;
+
+// Wycena dla już rozpoznanej monety: cena z Numisty, a w razie braku — szacunek AI.
+export async function priceCoin(
+  deps: PriceDeps, identity: CoinIdentity, frontB64: string, backB64: string,
+): Promise<ScanResult> {
   const numista = await deps.lookup(identity);
   const rarityLabel = classifyRarity(numista?.mintage ?? null, numista?.rarityIndex ?? null);
 
@@ -38,4 +42,9 @@ export async function runScan(deps: ScanDeps, frontB64: string, backB64: string)
     suggestedValue: est.value, valueCurrency: est.currency,
     valueSource: "ai_estimate", mintage: numista?.mintage ?? null, rarityLabel,
   };
+}
+
+export async function runScan(deps: ScanDeps, frontB64: string, backB64: string): Promise<ScanResult> {
+  const identity = await deps.identify(frontB64, backB64);
+  return priceCoin(deps, identity, frontB64, backB64);
 }

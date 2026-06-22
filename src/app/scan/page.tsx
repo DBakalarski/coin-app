@@ -2,7 +2,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { downscaleImage } from "@/lib/images";
-import { GRADES, type Grade } from "@/lib/types";
+import { GRADES, type Grade, type CoinIdentity } from "@/lib/types";
 import type { ScanResult } from "@/lib/coins/scanFlow";
 
 export default function ScanPage() {
@@ -14,8 +14,13 @@ export default function ScanPage() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [grade, setGrade] = useState<Grade>("VF");
   const [busy, setBusy] = useState(false);
-  const [phase, setPhase] = useState<"" | "scan" | "save">("");
+  const [phase, setPhase] = useState<"" | "identify" | "price" | "save">("");
+  const [scanned, setScanned] = useState<CoinIdentity | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  function coinLabel(id: CoinIdentity): string {
+    return [id.denomination, id.country, id.year ?? ""].filter(Boolean).join(", ");
+  }
 
   function onFrontChange(input: HTMLInputElement) {
     const file = input.files?.[0];
@@ -37,24 +42,41 @@ export default function ScanPage() {
     setFront(null);
     setBack(null);
     setResult(null);
+    setScanned(null);
     setError(null);
     frontInputRef.current?.click();
   }
 
   async function scan() {
     if (!front || !back) return;
-    setBusy(true); setPhase("scan"); setError(null);
+    setBusy(true); setError(null); setScanned(null);
     try {
-      const res = await fetch("/api/scan", { method: "POST",
+      // Etap 1 — rozpoznanie monety.
+      setPhase("identify");
+      const idRes = await fetch("/api/identify", { method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ frontB64: front, backB64: back }) });
-      if (res.status === 401) { router.push("/login"); return; }
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body.error || `Nie udało się rozpoznać (HTTP ${res.status}).`);
+      if (idRes.status === 401) { router.push("/login"); return; }
+      if (!idRes.ok) {
+        const body = await idRes.json().catch(() => ({}));
+        setError(body.error || `Nie udało się rozpoznać (HTTP ${idRes.status}).`);
         return;
       }
-      const data = await res.json();
+      const { identity } = (await idRes.json()) as { identity: CoinIdentity };
+      setScanned(identity);
+
+      // Etap 2 — wycena rozpoznanej monety.
+      setPhase("price");
+      const prRes = await fetch("/api/price", { method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frontB64: front, backB64: back, identity }) });
+      if (prRes.status === 401) { router.push("/login"); return; }
+      if (!prRes.ok) {
+        const body = await prRes.json().catch(() => ({}));
+        setError(body.error || `Nie udało się wycenić (HTTP ${prRes.status}).`);
+        return;
+      }
+      const data = await prRes.json();
       setResult(data);
       const firstGrade = data.priceTable ? (Object.keys(data.priceTable.grades)[0] as Grade) : "VF";
       setGrade(firstGrade);
@@ -128,7 +150,7 @@ export default function ScanPage() {
             </button>
           )}
           <button disabled={!front || !back || busy} onClick={scan} style={{ padding: 14 }}>
-            {busy && phase === "scan" ? "Rozpoznaję…" : "Rozpoznaj"}
+            {busy && (phase === "identify" || phase === "price") ? "Rozpoznaję…" : "Rozpoznaj"}
           </button>
         </section>
       )}
@@ -136,9 +158,10 @@ export default function ScanPage() {
       {busy && (
         <p className="status">
           <span className="spinner" />
-          {phase === "save"
-            ? "Zapisuję monetę…"
-            : "Rozpoznaję monetę — to może potrwać kilka–kilkanaście sekund…"}
+          {phase === "identify" && "Rozpoznaję monetę…"}
+          {phase === "price" &&
+            (scanned ? `Rozpoznano: ${coinLabel(scanned)} — sprawdzam cenę…` : "Sprawdzam cenę…")}
+          {phase === "save" && "Zapisuję monetę…"}
         </p>
       )}
 
