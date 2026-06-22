@@ -32,31 +32,50 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{ padding: 24, maxWidth: 420, margin: "0 auto" }}>
-      <h1>Logowanie</h1>
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="E-mail"
-        autoComplete="username"
-        style={{ width: "100%", padding: 12, marginBottom: 8 }}
-      />
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") login();
-        }}
-        placeholder="Hasło"
-        autoComplete="current-password"
-        style={{ width: "100%", padding: 12 }}
-      />
-      <button onClick={login} disabled={busy} style={{ marginTop: 12, padding: 12 }}>
-        Zaloguj
-      </button>
-      {error && <p style={{ color: "crimson", marginTop: 8 }}>{error}</p>}
+    <main
+      className="shell"
+      style={{ minHeight: "100dvh", display: "grid", placeItems: "center", maxWidth: 420 }}
+    >
+      <div className="stack" style={{ width: "100%" }}>
+        <div style={{ textAlign: "center" }}>
+          <span className="brand-mark" aria-hidden style={{ margin: "0 auto 14px" }}>
+            Ø
+          </span>
+          <p className="eyebrow">Gabinet numizmatyczny</p>
+          <h1 style={{ marginTop: 6 }}>Skarbiec</h1>
+          <p className="muted" style={{ marginTop: 6 }}>
+            Twoja prywatna kolekcja monet. Zaloguj się, by wejść.
+          </p>
+        </div>
+
+        <div className="reeded" />
+
+        <div className="card card-pad stack-sm">
+          <input
+            type="email"
+            className="field"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="E-mail"
+            autoComplete="username"
+          />
+          <input
+            type="password"
+            className="field"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") login();
+            }}
+            placeholder="Hasło"
+            autoComplete="current-password"
+          />
+          <button className="btn btn-primary" onClick={login} disabled={busy}>
+            {busy ? "Loguję…" : "Zaloguj"}
+          </button>
+          {error && <p className="alert">{error}</p>}
+        </div>
+      </div>
     </main>
   );
 }
