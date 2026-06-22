@@ -30,7 +30,8 @@ create policy "owner can read" on public.coins
 create policy "owner can insert" on public.coins
   for insert with check (auth.uid() = owner_id);
 create policy "owner can update" on public.coins
-  for update using (auth.uid() = owner_id);
+  for update using (auth.uid() = owner_id)
+  with check (auth.uid() = owner_id);
 create policy "owner can delete" on public.coins
   for delete using (auth.uid() = owner_id);
 
