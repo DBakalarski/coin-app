@@ -29,13 +29,22 @@ export async function POST(request: Request) {
     const result = await runScan(
       {
         identify: (f, b) => identifyCoin(ai, model, f, b),
-        lookup: (id) => lookupCoin(numista, id),
+        // Awaria Numisty nie powinna psuć całego skanu — degraduj do szacunku AI.
+        lookup: async (id) => {
+          try {
+            return await lookupCoin(numista, id);
+          } catch {
+            return null;
+          }
+        },
         estimate: (f, b, id) => estimateValue(ai, model, f, b, id),
       },
       frontB64, backB64,
     );
     return NextResponse.json(result);
   } catch (e) {
-    return NextResponse.json({ error: "Błąd rozpoznawania" }, { status: 502 });
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error("scan error:", detail);
+    return NextResponse.json({ error: `Błąd rozpoznawania: ${detail}` }, { status: 502 });
   }
 }

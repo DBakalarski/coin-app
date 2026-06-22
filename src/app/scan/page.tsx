@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { fileToBase64 } from "@/lib/images";
+import { downscaleImage } from "@/lib/images";
 import { GRADES, type Grade } from "@/lib/types";
 import type { ScanResult } from "@/lib/coins/scanFlow";
 
@@ -20,7 +20,7 @@ export default function ScanPage() {
     const file = input.files?.[0];
     input.value = "";
     if (!file) return;
-    fileToBase64(file).then(setFront);
+    downscaleImage(file).then(setFront).catch(() => setError("Nie udało się wczytać zdjęcia awersu."));
     // Otwórz aparat na rewers od razu (w obrębie gestu użytkownika).
     backInputRef.current?.click();
   }
@@ -29,7 +29,7 @@ export default function ScanPage() {
     const file = input.files?.[0];
     input.value = "";
     if (!file) return;
-    fileToBase64(file).then(setBack);
+    downscaleImage(file).then(setBack).catch(() => setError("Nie udało się wczytać zdjęcia rewersu."));
   }
 
   function reset() {
@@ -48,7 +48,11 @@ export default function ScanPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ frontB64: front, backB64: back }) });
       if (res.status === 401) { router.push("/login"); return; }
-      if (!res.ok) { setError("Nie udało się rozpoznać. Spróbuj ponownie."); return; }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError(body.error || `Nie udało się rozpoznać (HTTP ${res.status}).`);
+        return;
+      }
       const data = await res.json();
       setResult(data);
       const firstGrade = data.priceTable ? (Object.keys(data.priceTable.grades)[0] as Grade) : "VF";
