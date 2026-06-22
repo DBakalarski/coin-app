@@ -20,8 +20,16 @@ export async function POST(request: Request) {
   const front = `${stamp}-front.jpg`;
   const back = `${stamp}-back.jpg`;
   const storage = ctx.supabase.storage.from("coin-images");
-  await storage.upload(front, Buffer.from(frontB64, "base64"), { contentType: "image/jpeg" });
-  await storage.upload(back, Buffer.from(backB64, "base64"), { contentType: "image/jpeg" });
+  const frontUpload = await storage.upload(front, Buffer.from(frontB64, "base64"), { contentType: "image/jpeg" });
+  if (frontUpload.error) {
+    return NextResponse.json({ error: "Nie udało się zapisać zdjęcia" }, { status: 500 });
+  }
+  const backUpload = await storage.upload(back, Buffer.from(backB64, "base64"), { contentType: "image/jpeg" });
+  if (backUpload.error) {
+    // Sprzątamy osierocone zdjęcie awersu, by nie zostawić niespójnego stanu.
+    await storage.remove([front]);
+    return NextResponse.json({ error: "Nie udało się zapisać zdjęcia" }, { status: 500 });
+  }
 
   const created = await insertCoin(ctx.supabase, ctx.userId, {
     ...coin, frontImagePath: front, backImagePath: back,
