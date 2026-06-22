@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { fileToBase64 } from "@/lib/images";
 import { GRADES, type Grade } from "@/lib/types";
@@ -7,6 +7,8 @@ import type { ScanResult } from "@/lib/coins/scanFlow";
 
 export default function ScanPage() {
   const router = useRouter();
+  const frontInputRef = useRef<HTMLInputElement>(null);
+  const backInputRef = useRef<HTMLInputElement>(null);
   const [front, setFront] = useState<string | null>(null);
   const [back, setBack] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
@@ -14,10 +16,28 @@ export default function ScanPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function pick(side: "front" | "back", file?: File) {
+  function onFrontChange(input: HTMLInputElement) {
+    const file = input.files?.[0];
+    input.value = "";
     if (!file) return;
-    const b64 = await fileToBase64(file);
-    side === "front" ? setFront(b64) : setBack(b64);
+    fileToBase64(file).then(setFront);
+    // Otwórz aparat na rewers od razu (w obrębie gestu użytkownika).
+    backInputRef.current?.click();
+  }
+
+  function onBackChange(input: HTMLInputElement) {
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    fileToBase64(file).then(setBack);
+  }
+
+  function reset() {
+    setFront(null);
+    setBack(null);
+    setResult(null);
+    setError(null);
+    frontInputRef.current?.click();
   }
 
   async function scan() {
@@ -68,11 +88,42 @@ export default function ScanPage() {
   return (
     <main style={{ padding: 16, maxWidth: 520, margin: "0 auto" }}>
       <h1>Skanuj monetę</h1>
-      <label>Awers: <input type="file" accept="image/*" capture="environment"
-        onChange={(e) => pick("front", e.target.files?.[0])} /></label>
-      <label>Rewers: <input type="file" accept="image/*" capture="environment"
-        onChange={(e) => pick("back", e.target.files?.[0])} /></label>
-      <button disabled={!front || !back || busy} onClick={scan}>Rozpoznaj</button>
+
+      {/* Ukryte wejścia aparatu — sterowane przyciskami / automatem */}
+      <input ref={frontInputRef} type="file" accept="image/*" capture="environment"
+        style={{ display: "none" }} onChange={(e) => onFrontChange(e.target)} />
+      <input ref={backInputRef} type="file" accept="image/*" capture="environment"
+        style={{ display: "none" }} onChange={(e) => onBackChange(e.target)} />
+
+      {!result && (
+        <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {!front && (
+            <button onClick={() => frontInputRef.current?.click()} style={{ padding: 14 }}>
+              📷 Zrób zdjęcie awersu
+            </button>
+          )}
+          {front && (
+            <p>Awers: ✅ gotowy</p>
+          )}
+          {front && !back && (
+            <button onClick={() => backInputRef.current?.click()} style={{ padding: 14 }}>
+              📷 Zrób zdjęcie rewersu
+            </button>
+          )}
+          {back && (
+            <p>Rewers: ✅ gotowy</p>
+          )}
+          {(front || back) && (
+            <button onClick={reset} disabled={busy} style={{ padding: 8 }}>
+              Zrób zdjęcia od nowa
+            </button>
+          )}
+          <button disabled={!front || !back || busy} onClick={scan} style={{ padding: 14 }}>
+            Rozpoznaj
+          </button>
+        </section>
+      )}
+
       {error && <p style={{ color: "crimson" }}>{error}</p>}
 
       {result && (
