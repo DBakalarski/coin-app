@@ -13,7 +13,12 @@ export async function POST(request: Request) {
   } catch (res) {
     return res as Response;
   }
-  const { frontB64, backB64 } = await request.json();
+  let frontB64: string, backB64: string;
+  try {
+    ({ frontB64, backB64 } = await request.json());
+  } catch {
+    return NextResponse.json({ error: "Nieprawidłowe żądanie" }, { status: 400 });
+  }
   if (!frontB64 || !backB64) {
     return NextResponse.json({ error: "Brak zdjęć" }, { status: 400 });
   }

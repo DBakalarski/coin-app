@@ -1,12 +1,22 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Coin } from "@/lib/types";
 
 export default function CollectionPage() {
+  const router = useRouter();
   const [coins, setCoins] = useState<Coin[]>([]);
   const [q, setQ] = useState("");
-  useEffect(() => { fetch("/api/coins").then((r) => r.json()).then(setCoins); }, []);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      const res = await fetch("/api/coins");
+      if (res.status === 401) { router.push("/login"); return; }
+      if (!res.ok) { setError("Nie udało się wczytać kolekcji."); return; }
+      setCoins(await res.json());
+    })();
+  }, [router]);
 
   const filtered = coins.filter((c) =>
     c.identity.country.toLowerCase().includes(q.toLowerCase()));
@@ -15,6 +25,7 @@ export default function CollectionPage() {
   return (
     <main style={{ padding: 16, maxWidth: 640, margin: "0 auto" }}>
       <h1>Moja kolekcja</h1>
+      {error && <p style={{ color: "crimson" }}>{error}</p>}
       <p>Łączna wartość: <b>{total.toFixed(2)} PLN</b></p>
       <input placeholder="Filtruj po kraju" value={q} onChange={(e) => setQ(e.target.value)} />
       <Link href="/scan" style={{ marginLeft: 8 }}>+ Skanuj</Link>

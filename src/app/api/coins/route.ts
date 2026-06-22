@@ -13,8 +13,13 @@ export async function GET() {
 export async function POST(request: Request) {
   let ctx;
   try { ctx = await requireOwner(); } catch (r) { return r as Response; }
-  const body = await request.json();
-  const { frontB64, backB64, coin } = body as { frontB64: string; backB64: string; coin: Omit<NewCoin, "frontImagePath" | "backImagePath"> };
+  let body: { frontB64: string; backB64: string; coin: Omit<NewCoin, "frontImagePath" | "backImagePath"> };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Nieprawidłowe żądanie" }, { status: 400 });
+  }
+  const { frontB64, backB64, coin } = body;
 
   const stamp = `${ctx.userId}/${Date.now()}`;
   const front = `${stamp}-front.jpg`;

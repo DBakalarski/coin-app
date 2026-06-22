@@ -27,6 +27,7 @@ export default function ScanPage() {
       const res = await fetch("/api/scan", { method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ frontB64: front, backB64: back }) });
+      if (res.status === 401) { router.push("/login"); return; }
       if (!res.ok) { setError("Nie udało się rozpoznać. Spróbuj ponownie."); return; }
       const data = await res.json();
       setResult(data);
@@ -57,6 +58,7 @@ export default function ScanPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ frontB64: front, backB64: back, coin }) });
       if (res.ok) router.push("/collection");
+      else if (res.status === 401) { router.push("/login"); return; }
       else setError("Nie udało się zapisać.");
     } finally {
       setBusy(false);

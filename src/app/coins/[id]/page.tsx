@@ -7,7 +7,15 @@ export default function CoinDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [coin, setCoin] = useState<Coin | null>(null);
-  useEffect(() => { fetch(`/api/coins/${id}`).then((r) => r.json()).then(setCoin); }, [id]);
+  const [notFound, setNotFound] = useState(false);
+  useEffect(() => {
+    (async () => {
+      const res = await fetch(`/api/coins/${id}`);
+      if (res.status === 401) { router.push("/login"); return; }
+      if (!res.ok) { setNotFound(true); return; }
+      setCoin(await res.json());
+    })();
+  }, [id, router]);
 
   async function remove() {
     if (!confirm("Usunąć monetę?")) return;
@@ -19,6 +27,7 @@ export default function CoinDetailPage() {
     router.push("/collection");
   }
 
+  if (notFound) return <main style={{ padding: 16 }}>Nie znaleziono monety.</main>;
   if (!coin) return <main style={{ padding: 16 }}>Ładowanie…</main>;
   return (
     <main style={{ padding: 16, maxWidth: 640, margin: "0 auto" }}>
