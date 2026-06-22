@@ -3,12 +3,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { fileToBase64 } from "@/lib/images";
 import { GRADES, type Grade } from "@/lib/types";
+import type { ScanResult } from "@/lib/coins/scanFlow";
 
 export default function ScanPage() {
   const router = useRouter();
   const [front, setFront] = useState<string | null>(null);
   const [back, setBack] = useState<string | null>(null);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<ScanResult | null>(null);
   const [grade, setGrade] = useState<Grade>("VF");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,15 +23,18 @@ export default function ScanPage() {
   async function scan() {
     if (!front || !back) return;
     setBusy(true); setError(null);
-    const res = await fetch("/api/scan", { method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ frontB64: front, backB64: back }) });
-    setBusy(false);
-    if (!res.ok) { setError("Nie udało się rozpoznać. Spróbuj ponownie."); return; }
-    const data = await res.json();
-    setResult(data);
-    const firstGrade = data.priceTable ? (Object.keys(data.priceTable.grades)[0] as Grade) : "VF";
-    setGrade(firstGrade);
+    try {
+      const res = await fetch("/api/scan", { method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frontB64: front, backB64: back }) });
+      if (!res.ok) { setError("Nie udało się rozpoznać. Spróbuj ponownie."); return; }
+      const data = await res.json();
+      setResult(data);
+      const firstGrade = data.priceTable ? (Object.keys(data.priceTable.grades)[0] as Grade) : "VF";
+      setGrade(firstGrade);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function valueForGrade(): number | null {
@@ -39,20 +43,24 @@ export default function ScanPage() {
   }
 
   async function save() {
+    if (!result) return;
     setBusy(true);
-    const coin = {
-      identity: result.identity, numista: result.numista,
-      selectedGrade: grade, estimatedValue: valueForGrade(),
-      valueCurrency: result.valueCurrency, valueSource: result.valueSource,
-      mintage: result.mintage, rarityLabel: result.rarityLabel,
-      purchasePrice: null, notes: null,
-    };
-    const res = await fetch("/api/coins", { method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ frontB64: front, backB64: back, coin }) });
-    setBusy(false);
-    if (res.ok) router.push("/collection");
-    else setError("Nie udało się zapisać.");
+    try {
+      const coin = {
+        identity: result.identity, numista: result.numista,
+        selectedGrade: grade, estimatedValue: valueForGrade(),
+        valueCurrency: result.valueCurrency, valueSource: result.valueSource,
+        mintage: result.mintage, rarityLabel: result.rarityLabel,
+        purchasePrice: null, notes: null,
+      };
+      const res = await fetch("/api/coins", { method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frontB64: front, backB64: back, coin }) });
+      if (res.ok) router.push("/collection");
+      else setError("Nie udało się zapisać.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

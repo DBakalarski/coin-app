@@ -17,7 +17,7 @@ export default function CollectionPage() {
       <h1>Moja kolekcja</h1>
       <p>Łączna wartość: <b>{total.toFixed(2)} PLN</b></p>
       <input placeholder="Filtruj po kraju" value={q} onChange={(e) => setQ(e.target.value)} />
-      <Link href="/scan"><button style={{ marginLeft: 8 }}>+ Skanuj</button></Link>
+      <Link href="/scan" style={{ marginLeft: 8 }}>+ Skanuj</Link>
       <ul style={{ listStyle: "none", padding: 0 }}>
         {filtered.map((c) => (
           <li key={c.id} style={{ borderBottom: "1px solid #ddd", padding: "8px 0" }}>

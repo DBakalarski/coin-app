@@ -11,7 +11,11 @@ export default function CoinDetailPage() {
 
   async function remove() {
     if (!confirm("Usunąć monetę?")) return;
-    await fetch(`/api/coins/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/coins/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      alert("Nie udało się usunąć monety.");
+      return;
+    }
     router.push("/collection");
   }
 
@@ -30,7 +34,7 @@ export default function CoinDetailPage() {
           ))}
         </tbody></table>
       )}
-      {coin.numista?.numistaUrl && <p><a href={coin.numista.numistaUrl} target="_blank">Zobacz w Numiście</a></p>}
+      {coin.numista?.numistaUrl && <p><a href={coin.numista.numistaUrl} target="_blank" rel="noopener noreferrer">Zobacz w Numiście</a></p>}
       <button onClick={remove} style={{ color: "crimson" }}>Usuń</button>
     </main>
   );
