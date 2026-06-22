@@ -14,6 +14,7 @@ export default function ScanPage() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [grade, setGrade] = useState<Grade>("VF");
   const [busy, setBusy] = useState(false);
+  const [phase, setPhase] = useState<"" | "scan" | "save">("");
   const [error, setError] = useState<string | null>(null);
 
   function onFrontChange(input: HTMLInputElement) {
@@ -42,7 +43,7 @@ export default function ScanPage() {
 
   async function scan() {
     if (!front || !back) return;
-    setBusy(true); setError(null);
+    setBusy(true); setPhase("scan"); setError(null);
     try {
       const res = await fetch("/api/scan", { method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -57,8 +58,10 @@ export default function ScanPage() {
       setResult(data);
       const firstGrade = data.priceTable ? (Object.keys(data.priceTable.grades)[0] as Grade) : "VF";
       setGrade(firstGrade);
+    } catch {
+      setError("Brak połączenia. Sprawdź internet i spróbuj ponownie.");
     } finally {
-      setBusy(false);
+      setBusy(false); setPhase("");
     }
   }
 
@@ -69,7 +72,7 @@ export default function ScanPage() {
 
   async function save() {
     if (!result) return;
-    setBusy(true);
+    setBusy(true); setPhase("save"); setError(null);
     try {
       const coin = {
         identity: result.identity, numista: result.numista,
@@ -84,8 +87,10 @@ export default function ScanPage() {
       if (res.ok) router.push("/collection");
       else if (res.status === 401) { router.push("/login"); return; }
       else setError("Nie udało się zapisać.");
+    } catch {
+      setError("Brak połączenia. Sprawdź internet i spróbuj ponownie.");
     } finally {
-      setBusy(false);
+      setBusy(false); setPhase("");
     }
   }
 
@@ -123,12 +128,21 @@ export default function ScanPage() {
             </button>
           )}
           <button disabled={!front || !back || busy} onClick={scan} style={{ padding: 14 }}>
-            Rozpoznaj
+            {busy && phase === "scan" ? "Rozpoznaję…" : "Rozpoznaj"}
           </button>
         </section>
       )}
 
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {busy && (
+        <p className="status">
+          <span className="spinner" />
+          {phase === "save"
+            ? "Zapisuję monetę…"
+            : "Rozpoznaję monetę — to może potrwać kilka–kilkanaście sekund…"}
+        </p>
+      )}
+
+      {error && <p style={{ color: "crimson", marginTop: 12 }}>{error}</p>}
 
       {result && (
         <section style={{ marginTop: 16 }}>
@@ -142,7 +156,9 @@ export default function ScanPage() {
           <p>Wartość: <b>{valueForGrade() ?? "—"} {result.valueCurrency}</b>{" "}
             {result.valueSource === "ai_estimate" && <em>(szacunek AI — orientacyjny)</em>}</p>
           {result.rarityLabel && <p>Rzadkość: {result.rarityLabel} (nakład: {result.mintage ?? "?"})</p>}
-          <button disabled={busy} onClick={save}>Zapisz</button>
+          <button disabled={busy} onClick={save}>
+            {busy && phase === "save" ? "Zapisuję…" : "Zapisz"}
+          </button>
         </section>
       )}
     </main>
